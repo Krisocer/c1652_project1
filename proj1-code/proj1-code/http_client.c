@@ -86,7 +86,7 @@ main(int argc, char ** argv)
 
     req_str = malloc(100);
     sprintf(req_str, "GET /%s HTTP/1.0\r\n\r\n",server_path);
-    //request = "GET / HTTP/1.0";
+
     int res;
     int len = strlen(req_str);
     if((res = send(sock, req_str, len, 0)) <= 0){
@@ -100,47 +100,39 @@ main(int argc, char ** argv)
     FD_SET(sock, &fds);
     select(sock+1, &fds, NULL, NULL, NULL);
 
-
-
-    //read header
-
-//    int byte = 0;
-//    for(int i = 0; i < 11; i++) {
-//        char temp[100];
-//        if ((res = recv(sock, temp, sizeof(temp - 1), 0)) <= 0) {
-//            perror("recv error");
-//            exit(-1);
-//        }
-//        strcat(buf, temp);
-//        byte +=res;
-//        buf[byte] = '\0';
-//    }
-//    printf("Received %d bytes: %s\n", byte, buf);
-    char returnCodeBuf[15];
-    if ((res = recv(sock, returnCodeBuf, sizeof(returnCodeBuf)-1, 0)) < 0){
-        perror("recv error");
-        exit(-1);
-    }
-    returnCodeBuf[res]='\0';
-    //printf("Received %d bytes: %s\n", res, returnCodeBuf);
-    //check return code
-    char * returnCode = malloc(12);
-    strncpy(returnCode, &returnCodeBuf[9],3);
-    if(strcmp(returnCode,"200") == 0){
-        printf("no error\n");
-        char headerBuf[1024];
-        if ((res = recv(sock, returnCodeBuf, sizeof(headerBuf)-1, 0)) < 0){
-            perror("recv error");
-            exit(-1);
+    char buf[BUFSIZE];
+    char header[BUFSIZE];
+    char bufcpy[BUFSIZE];
+    int head_end = 0;
+    while(res > 0 && head_end == 0){
+        res = recv(sock, buf, BUFSIZE-1, 0);
+        for(int i = 0; i < BUFSIZE; i++){
+            if(buf[i] == '\r' && buf[i+1] == '\n' && buf[i+2] == '\r' && buf[i+3] == '\n'){
+                head_end = 1;
+                strncpy(header,&buf[0],i);
+                strcpy(bufcpy,&buf[i]);
+            }
         }
-        //TODO: print header and rest of the web
-    }else{
-        printf("error: %s\n",returnCode);
-        exit(-1);
+        buf[res] = '\0';
     }
-
-    close(sock);
-    return 0;
+    char OK_check[3];
+    strncpy(OK_check,&header[9],3);
+    if(atoi(OK_check) == 200){
+        printf("%s\n",header);
+        printf("%s", bufcpy);
+        while(res > 0){
+            res = recv(sock, buf, BUFSIZE-1, 0);
+            buf[res] = '\0';
+            printf("%s",buf);
+        }
+        close(sock);
+        return 0;
+    }else{
+        //printf("test");
+        printf("%s\n",header);
+        close(sock);
+        return -1;
+    }
     /* get host IP address  */
     /* Hint: use gethostbyname() */
 
