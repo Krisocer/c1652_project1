@@ -2,8 +2,8 @@
  * CS 1652 Project 1 
  * (c) Jack Lange, 2020
  * (c) Amy Babay, 2022
- * (c) <Zhimin Li & Yuanyi Li>
- *
+ * (c) <Student names here>
+ * 
  * Computer Science Department
  * University of Pittsburgh
  */
@@ -31,47 +31,53 @@ handle_connection(int sock)
     char * ok_response_f  = "HTTP/1.0 200 OK\r\n"        \
         					"Content-type: text/plain\r\n"                  \
         					"Content-length: %d \r\n\r\n";
-    // treat as success
+
     char * notok_response = "HTTP/1.0 404 FILE NOT FOUND\r\n"   \
         					"Content-type: text/html\r\n\r\n"                       \
         					"<html><body bgColor=black text=white>\n"               \
         					"<h2>404 FILE NOT FOUND</h2>\n"
                             "</body></html>\n";
+
+    //(void) notok_response;
     int res = -1;
     int len = 0;
-    int ok = 1;
+    int ok = 0;
 
-    char fileName[FILENAMESIZE];
     char buf[BUFSIZE];
-    if ((len = read(sock, buf, sizeof(buf) - 1)) <= 0) {
+    if ((len = recv(sock, buf, sizeof(buf) - 1,0)) <= 0) {
         perror("read error");
         ok = -1;
     }
-    buf[BUFSIZE-1] = '\0';
-    //breaks string str into a series of tokens using the delimiter delim to extract request and header
-    char *url;
+    buf[len] = '\0';
+    //breaks string str into a series of tokens using the delimiter delim to extract requested filename
+    char *fn;
     const char s[2] = " "; //delim
+    const char s2[2] = "/";
     //first token: "GET"
-    url = strtok(buf,s);
-    //second token: host (filename)
-    url = strtok(NULL,s);
-    strcpy(fileName, url);
-    FILE * f = fopen(fileName, "r+");
-    if (f == NULL ){
-        ok = -1; //file not found, notok_response
+    fn = strtok(buf,s2);
+    if(strcmp(fn,"GET ") != 0){
+        ok = -1;
     }
-    if (ok == 1) {
-        if ((res = write(sock, ok_response_f, strlen(ok_response_f))) <= 0) {
+    //second token: host (filename)
+    fn = strtok(NULL,s);
+    FILE * fp = fopen(fn, "rb");
+    if (fp == NULL ) ok = -1;
+    if (ok == 0) {
+        //puts("test");
+        if ((res = send(sock, ok_response_f, strlen(ok_response_f),0)) <= 0) {
             perror("write error");
         }
         //write read file to sock
-        if ((res = write(sock, buf, len)) <= 0) {
-            perror("write error");
+        char fc[1024];
+        while(fgets(fc, 1024, fp)){
+            if ((res = send(sock, fc, strlen(fc),0) <= 0)){
+                perror("write error");
+            }
         }
-    } else {
-        if ((res = write(sock, notok_response, strlen(notok_response))) <= 0) {
-            perror("write error");
-        }
+        fclose(fp);
+    }else{
+        res = send(sock, notok_response, strlen(notok_response),0) <= 0;
+        if(res < 0){ printf("send error3"); }
     }
     close(sock);
     /* first read loop -- get request and headers*/
@@ -94,6 +100,7 @@ main(int argc, char ** argv)
     int server_port = -1;
     int ret         =  0;
     int sock        = -1;
+
     socklen_t clilen;
     /* parse command line args */
     if (argc != 2) {
@@ -108,38 +115,44 @@ main(int argc, char ** argv)
         exit(-1);
     }
 
-    /* initialize and make socket */
-    if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        fprintf(stderr, "socket error");
+    struct sockaddr_in saddr;
+    if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+        printf("socket creation error");
         exit(-1);
     }
 
-    /* set server address */
-    struct sockaddr_in sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sin_port = htons(server_port);
-    sa.sin_addr.s_addr = htonl(INADDR_ANY);
-    sa.sin_family = AF_INET;
-    /* bind listening socket */
-    if ((bind(sock, (struct sockaddr *)&sa, sizeof(sa))) < 0) {
-        perror( "tcp_server: bind error");
+    memset(&saddr, 0, sizeof(saddr));
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = INADDR_ANY;
+    saddr.sin_port = htons(server_port);
+
+    if (bind(sock, (struct sockaddr *) &saddr, sizeof(saddr)) < 0) {
+        printf("bind error");
         exit(-1);
     }
-    /* start listening */
+    printf("server is now bound to port %d\n", server_port);
+
     if (listen(sock, 32) < 0) {
-        perror("tcp_server: listen error");
+        printf("listen error");
         exit(-1);
     }
+    /* initialize and make socket */
+
+    /* set server address */
+
+    /* bind listening socket */
+
+    /* start listening */
+
     /* connection handling loop: wait to accept connection */
-    clilen = sizeof(sa);
-    int sock2;
+    clilen = sizeof(saddr);
     while (1) {
-        if ((sock2 = accept(sock,(struct sockaddr *)&sa,&clilen)) < 0) {
-            perror("fail to accept");
+        /* handle connections */
+        if ((accept(sock, (struct sockaddr *)&saddr, &clilen)) < 0) {
+            perror("accept error");
             exit(-1);
         }
-        /* handle connections */
-        ret = handle_connection(sock2);
+        ret = handle_connection(sock);
         if (ret < 0) {
             perror("fail to handle connection");
             exit(-1);
