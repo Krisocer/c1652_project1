@@ -61,10 +61,16 @@ handle_connection(int sock)
     if (fp == NULL ) ok = -1;
     if (ok == 0) {
         //puts("test");
-        if ((res = send(sock, ok_response_f, strlen(ok_response_f),0)) <= 0) {
+        char ok_msg[100];
+        fseek(fp, SEEK_CUR, SEEK_END);
+        int sz = ftell(fp);
+        sprintf(ok_msg,ok_response_f,sz);
+        ok_msg[strlen(ok_response_f)+4] = '\0';
+        if ((res = send(sock, ok_msg, strlen(ok_msg),0)) <= 0) {
             perror("write error");
         }
         //write read file to sock
+        fseek(fp, SEEK_CUR, SEEK_SET);
         char fc[1024];
         while(fgets(fc, 1024, fp)){
             if ((res = send(sock, fc, strlen(fc),0) <= 0)){
@@ -130,7 +136,7 @@ main(int argc, char ** argv) {
     }
     printf("server is now bound to port %d\n", server_port);
 
-    if (listen(accept_sock, 4) < 0) {
+    if (listen(accept_sock, 32) < 0) {
         printf("listen error");
         exit(-1);
     }
