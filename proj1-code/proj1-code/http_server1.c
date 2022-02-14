@@ -146,13 +146,14 @@ main(int argc, char ** argv)
 
     /* connection handling loop: wait to accept connection */
     clilen = sizeof(saddr);
+    int sock2;
     while (1) {
         /* handle connections */
-        if ((accept(sock, (struct sockaddr *)&saddr, &clilen)) < 0) {
+        if ((sock2 = accept(sock, (struct sockaddr *)&saddr, &clilen)) < 0) {
             perror("accept error");
             exit(-1);
         }
-        ret = handle_connection(sock);
+        ret = handle_connection(sock2);
         if (ret < 0) {
             perror("fail to handle connection");
             exit(-1);
