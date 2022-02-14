@@ -35,7 +35,7 @@ handle_connection(int sock)
         					"<html><body bgColor=black text=white>\n"               \
         					"<h2>404 FILE NOT FOUND</h2>\n"
                             "</body></html>\n";
-    (void) notok_response;
+    //(void) notok_response;
     int res = -1;
     int len = 0;
     int ok = 0;
