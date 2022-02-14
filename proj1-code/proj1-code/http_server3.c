@@ -13,12 +13,16 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
+#include <unistd.h>
+#include <ctype.h>
 
 #include <fcntl.h>
 
 #include <sys/stat.h>
 #include <sys/socket.h>
-
+#include <netinet/in.h>
+#include <netdb.h>
 
 #include "pet_list.h"
 #include "pet_hashtable.h"
@@ -130,7 +134,6 @@ int
 main(int argc, char ** argv) 
 {
     int server_port = -1;
-
     /* parse command line args */
     if (argc != 2) {
         fprintf(stderr, "usage: http_server3 port\n");
@@ -143,7 +146,7 @@ main(int argc, char ** argv)
         fprintf(stderr, "INVALID PORT NUMBER: %d; can't be < 1500\n", server_port);
         exit(-1);
     }
-    
+
     /* Initialize connection tracking data structure */
 
     /* initialize and make server socket */
