@@ -27,17 +27,15 @@
 static int
 handle_connection(int sock)
 {
-
     char * ok_response_f  = "HTTP/1.0 200 OK\r\n"        \
         					"Content-type: text/plain\r\n"                  \
         					"Content-length: %d \r\n\r\n";
-
+    // treat as success
     char * notok_response = "HTTP/1.0 404 FILE NOT FOUND\r\n"   \
         					"Content-type: text/html\r\n\r\n"                       \
         					"<html><body bgColor=black text=white>\n"               \
         					"<h2>404 FILE NOT FOUND</h2>\n"
                             "</body></html>\n";
-
     //(void) notok_response;
     int res = -1;
     int len = 0;
@@ -64,10 +62,16 @@ handle_connection(int sock)
     if (fp == NULL ) ok = -1;
     if (ok == 0) {
         //puts("test");
-        if ((res = send(sock, ok_response_f, strlen(ok_response_f),0)) <= 0) {
+        char ok_msg[100];
+        fseek(fp, SEEK_CUR, SEEK_END);
+        int sz = ftell(fp);
+        sprintf(ok_msg,ok_response_f,sz);
+        ok_msg[strlen(ok_response_f)+4] = '\0';
+        if ((res = send(sock, ok_msg, strlen(ok_msg),0)) <= 0) {
             perror("write error");
         }
         //write read file to sock
+        fseek(fp, SEEK_CUR, SEEK_SET);
         char fc[1024];
         while(fgets(fc, 1024, fp)){
             if ((res = send(sock, fc, strlen(fc),0) <= 0)){
