@@ -95,6 +95,7 @@ main(int argc, char ** argv)
     }
     printf("Request made: %s\n",req_str);
 
+    //use select to wait until the socket is ready to read
     fd_set fds;
     FD_ZERO(&fds);
     FD_SET(sock, &fds);
@@ -104,19 +105,21 @@ main(int argc, char ** argv)
     char header[BUFSIZE];
     char bufcpy[BUFSIZE];
     int head_end = 0;
+    //loop 1 read header
     while(res > 0 && head_end == 0){
         res = recv(sock, buf, BUFSIZE-1, 0);
         for(int i = 0; i < BUFSIZE; i++){
             if(buf[i] == '\r' && buf[i+1] == '\n' && buf[i+2] == '\r' && buf[i+3] == '\n'){
                 head_end = 1;
                 strncpy(header,&buf[0],i);
-                strcpy(bufcpy,&buf[i]);
+                strcpy(bufcpy,&buf[i]);//store the real web content which is included in the header buffer
             }
         }
         buf[res] = '\0';
     }
-    char OK_check[3];
+    char OK_check[3];//extract and examine the code
     strncpy(OK_check,&header[9],3);
+    //loop 2, print real web content if code == 200, else print only header
     if(atoi(OK_check) == 200){
         printf("%s\n",header);
         printf("%s", bufcpy);
